@@ -3,6 +3,7 @@ import { Text, View, StyleSheet, Image, TouchableOpacity, Alert } from 'react-na
 import { TextInput } from 'react-native-gesture-handler';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 
+
 import appFirebase from '../credenciales/credenciales';
 
 const auth = getAuth(appFirebase);
@@ -15,7 +16,7 @@ export default function Login(props) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       Alert.alert('Iniciando Sesión', 'Accediendo....');
-      props.navigation.navigate('Home');
+      props.navigation.navigate('Home', { email: email });
     } catch (error) {
       console.log(error);
       Alert.alert('Error', '¡El usuario o la contraseña son incorrectas!');

@@ -1,11 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
-import { Text, View, StyleSheet, Button, TextInput, FlatList } from 'react-native';
+import { Text, View, StyleSheet, Button, TextInput } from 'react-native';
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import * as FileSystem from 'expo-file-system';
 import Listado from './Listado';
 
 export default function Escanner() {
-  const [hasPermission, setHasPermission] = useState(null);
   const [scanned, setScanned] = useState(false);
   const [text, setText] = useState('Aún no escaneado');
   const [itemName, setItemName] = useState('');
@@ -13,6 +13,8 @@ export default function Escanner() {
   const [scannedCodes, setScannedCodes] = useState([]);
   const [showScanner, setShowScanner] = useState(true);
   const [warehouseName, setWarehouseName] = useState('');
+  const [responsible, setResponsible] = useState('');
+  const [warehouseCode, setWarehouseCode] = useState('');
 
   const askForCameraPermission = async () => {
     const { status } = await BarCodeScanner.requestPermissionsAsync();
@@ -26,13 +28,36 @@ export default function Escanner() {
   const handleBarCodeScanned = ({ type, data }) => {
     setScanned(true);
     setText(data);
-    setItemName('');
     setScanDateTime('Fecha y hora: ' + new Date().toLocaleString());
 
-    setScannedCodes(prevCodes => [...prevCodes, { data, itemName, scanDateTime }]);
+    // Verificar si el código ya ha sido escaneado
+    const isCodeAlreadyScanned = scannedCodes.some(code => code.data === data);
 
-    console.log('Type: ' + type + '\nDatos: ' + data + '\nNombre del artículo: ' + itemName);
-    saveToFile(data, itemName);
+    if (isCodeAlreadyScanned) {
+      alert('Este código ya ha sido escaneado. Por favor, escanea un código diferente.');
+      return;
+    }
+
+    if (warehouseName && !warehouseCode) {
+      // Escaneo de código de bodega
+      setWarehouseCode(data);
+      alert('¡Se ha escaneado un código de Bodega!');
+    } else if (warehouseName && warehouseCode && itemName) {
+      // Verificar si el código del artículo es el mismo que el de la bodega
+    if (data === warehouseCode) {
+      alert('No se puede repetir el código escaneado, intenta de nuevo');
+      return;
+    }
+      // Escaneo de artículo
+      const newScannedCode = { data, itemName, scanDateTime, warehouseCode, responsible };
+      setScannedCodes(prevCodes => [...prevCodes, newScannedCode]);
+      saveToFile(data, itemName);
+      alert('¡Se ha escaneado un artículo!');
+      setItemName(''); // Limpiar el nombre del artículo después de escanear
+      setWarehouseName(''); // Limpiar el nombre de la bodega después de escanear
+      setWarehouseCode(''); // Limpiar el código de la bodega después de escanear
+      setShowScanner(false); // Cerrar el escáner después de escanear
+    }
   };
 
   const saveToFile = async (data, itemName) => {
@@ -52,12 +77,13 @@ export default function Escanner() {
     setScanned(true);
     setText(data);
     setWarehouseName('');
-
-    setScannedCodes(prevCodes => [...prevCodes, { data, itemName: warehouseName, scanDateTime, type: 'Bodega' }]);
-
-    console.log('Type: ' + type + '\nDatos: ' + data + '\nNombre de la bodega: ' + warehouseName);
-    saveToFile(data, warehouseName);
-
+  
+    const warehouseScanDateTime = 'Fecha y hora: ' + new Date().toLocaleString();
+    setScannedCodes(prevCodes => [...prevCodes, { data, itemName: 'Bodega', scanDateTime: warehouseScanDateTime, type: 'Bodega' }]);
+  
+    console.log('Type: ' + type + '\nDatos: ' + data + '\nNombre de la bodega: ' + 'Bodega');
+    saveToFile(data, 'Bodega');
+  
     if (type === BarCodeScanner.Constants.BarCodeType.qr) {
       alert('¡Se ha escaneado un código de Bodega!');
     } else {
@@ -103,6 +129,28 @@ export default function Escanner() {
     <View style={styles.container}>
       {showScanner ? (
         <View style={styles.scannerContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Nombre de la bodega"
+            onChangeText={(text) => setWarehouseName(text)}
+            value={warehouseName}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Nombre del artículo"
+            onChangeText={(text) => setItemName(text)}
+            value={itemName}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Nombre del responsable"
+            onChangeText={(text) => setResponsible(text)}
+            value={responsible}
+          />
+          <View style={styles.buttonContainer}>
+          <Button title={'Escanear Bodega'} onPress={() => setScanned(false)} color="cyan" />
+          <Button title={'Escanear Artículo'} onPress={() => setScanned(false)} color="cyan" />
+          </View>
           <View style={styles.barcodebox}>
             <BarCodeScanner
               onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
@@ -111,28 +159,23 @@ export default function Escanner() {
           </View>
           <Text style={styles.maintext}>{text}</Text>
           <Text style={styles.maintext}>{scanDateTime}</Text>
-          {renderWarehouseScanner()}
-          <TextInput
-            style={styles.input}
-            placeholder="Nombre del artículo"
-            onChangeText={(text) => setItemName(text)}
-            value={itemName}
-          />
-          <Button title={'Escanear de nuevo'} onPress={switchToScanner} color='cyan' />
           <Button title={'Ver Lista'} onPress={() => setShowScanner(false)} color='green' />
         </View>
       ) : (
         <Listado
-          scannedCodes={scannedCodes}
+          scannedCodes={scannedCodes.filter(code => code.type !== 'Bodega')} // Filtra los códigos que no son de bodega
+          scannedWarehouses={scannedCodes.filter(code => code.type === 'Bodega')} // Filtra los códigos que son de bodega
           switchToScanner={() => setShowScanner(true)}
           addItem={addItem}
           updateItem={updateItem}
-           deleteItem={deleteItem}
+          deleteItem={deleteItem}
         />
       )}
+
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   // Estilos omitidos por brevedad
 
@@ -183,5 +226,11 @@ const styles = StyleSheet.create({
   listItem: {
     fontSize: 16,
     marginBottom: 5,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly', // Cambiado de 'space-between' a 'space-evenly'
+    width: '100%',
+    paddingHorizontal: 10,
   },
 });
