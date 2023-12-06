@@ -1,38 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text, View, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import { TextInput } from 'react-native-gesture-handler';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import appFirebase from '../credenciales/credenciales';
 
 const auth = getAuth(appFirebase);
 
 export default function Login(props) {
+  const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState();
 
-  const logueo = async () => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      Alert.alert('Iniciando Sesión', 'Accediendo....');
-      props.navigation.navigate('Home', { email: email });
-    } catch (error) {
-      console.log(error);
-      Alert.alert('Error', '¡El usuario o la contraseña son incorrectas!');
-    }
-  };
+  useEffect(() => {
+    const fetchNombre = async () => {
+      const nombreGuardado = await AsyncStorage.getItem('nombre');
+      if (nombreGuardado) {
+        setNombre(nombreGuardado); // Establece el nombre guardado
+      }
+    };
 
-  /*const registro = async () => {
-    try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      Alert.alert('Registro Exitoso', 'Usuario registrado exitosamente');
-      props.navigation.navigate('Login'); // Después del registro, volvemos a la pantalla de inicio de sesión
-    } catch (error) {
-      console.log(error);
-      Alert.alert('Error en el Registro', 'Ocurrió un error al registrar el usuario');
-    }
-  };*/
+    fetchNombre();
+  }, []);
+
+  const logueo = async () => {
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    Alert.alert('Iniciando Sesión', 'Accediendo....');
+    props.navigation.navigate('Home', { email: email }); // Navega a la pantalla Home
+  } catch (error) {
+    console.log(error);
+    Alert.alert('Error', '¡El usuario o la contraseña son incorrectas!');
+  }
+  
+};
 
   return (
     <View style={styles.padre}>
@@ -63,9 +65,9 @@ export default function Login(props) {
             <Text style={styles.textoBoton}>Ingresar</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cajaBoton} onPress={logueo}>
-            <Text style={styles.textoBoton}>Registrar</Text>
-          </TouchableOpacity>
+          <TouchableOpacity style={styles.cajaBoton} onPress={() => props.navigation.navigate('Registro')}>
+      <Text style={styles.textoBoton}>Registrar</Text>
+    </TouchableOpacity>
         </View>
       </View>
     </View>

@@ -1,17 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput, Modal, Button } from 'react-native';
+import appFirebase from '../credenciales/credenciales';
+import { getDatabase, ref, push } from "@firebase/database";
 
 const Listado = ({ scannedCodes, scannedWarehouses, switchToScanner, addItem, updateItem, deleteItem }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [itemName, setItemName] = useState('');
   const [responsible, setResponsible] = useState(''); // Nuevo estado para el nombre del responsable
+  const [email, setEmail] = useState(''); // Asume que el correo electrónico inicial es una cadena vacía
+  const [hasPermission, setHasPermission] = useState(null);
 
   const handleAddItem = () => {
     if (itemName.trim() !== '') {
-      addItem({ data: 'Nuevo código', itemName, responsible, scanDateTime: new Date().toLocaleString() });
+      const newItem = { 
+        data: 'Nuevo código', 
+        itemName, 
+        responsible: email, 
+        scanDateTime: new Date().toLocaleString() 
+      };
+      
+      addItem(newItem);
+      
+      const db = getDatabase(appFirebase);
+      push(ref(db, 'items/'), newItem)
+        .then(() => {
+          console.log('Item added to Firebase');
+        })
+        .catch((error) => {
+          console.error('Error adding item to Firebase', error);
+        });
+      
       setItemName('');
-      setResponsible('');
       setModalVisible(false);
     } else {
       setModalVisible(false);
@@ -19,10 +39,19 @@ const Listado = ({ scannedCodes, scannedWarehouses, switchToScanner, addItem, up
   };
 
   const handleUpdateItem = () => {
-    if (itemName.trim() !== '' && selectedItem && responsible.trim() !== '') {
-      updateItem(selectedItem, itemName, responsible, new Date().toLocaleString());
+    if (itemName.trim() !== '' && selectedItem) {
+      
+      const updatedItem = {
+        ...selectedItem,
+        modifiedData: {
+          itemName,
+          responsible: email,
+          modificationTime: new Date().toLocaleString(),
+        },
+      };
+      
+      updateItem(updatedItem); // Usamos el email del usuario como responsable
       setItemName('');
-      setResponsible('');
       setModalVisible(false);
     }
   };
@@ -35,27 +64,38 @@ const Listado = ({ scannedCodes, scannedWarehouses, switchToScanner, addItem, up
   };
 
   const renderItem = ({ item }) => (
-    <View style={styles.resultContainer}>
-      <Text style={styles.resultText}>Código de Bodega: {item.warehouseCode}</Text>
-      <Text style={styles.resultText}>Código de Artículo: {item.data}</Text>
-      <Text style={styles.resultText}>Nombre del Artículo: {item.itemName}</Text>
-      <Text style={styles.resultText}>Responsable: {item.responsible}</Text>
-      <Text style={styles.resultText}>{item.scanDateTime}</Text>
-      <View style={styles.buttonsContainer}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => openModal(item)}
-        >
-          <Text style={styles.actionButtonText}>Modificar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => deleteItem(item)}
-        >
-          <Text style={styles.actionButtonText}>Eliminar</Text>
-        </TouchableOpacity>
+    <View style={styles.outerContainer}>
+      <View style={styles.resultContainer}>
+        <Text style={styles.resultText}>Código de Bodega: {item.warehouseCode}</Text>
+        <Text style={styles.resultText}>Código de Artículo: {item.data}</Text>
+        <Text style={styles.resultText}>Nombre del Artículo: {item.itemName}</Text>
+        <Text style={styles.resultText}>Responsable: {item.responsible}</Text>
+        <Text style={styles.resultText}>{item.scanDateTime}</Text>
+        {item.modifiedData && (
+        <>
+          <Text style={styles.resultText}>Datos Modificados:</Text>
+          <Text style={styles.resultText}>Nombre Artículo Modificado: {item.modifiedData.itemName}</Text>
+          <Text style={styles.resultText}>Hora de Modificación: {item.modifiedData.modificationTime}</Text>
+          <Text style={styles.resultText}>Responsable de Modificación: {item.modifiedData.responsible}</Text>
+        </>
+      )}
+        <View style={styles.buttonsContainer}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => openModal(item)}
+          >
+            <Text style={styles.actionButtonText}>Modificar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => deleteItem(item)}
+          >
+            <Text style={styles.actionButtonText}>Eliminar</Text>
+          </TouchableOpacity>
+          </View>
       </View>
     </View>
+    
   );
   // Retorno del componente Listado
   return (
@@ -123,6 +163,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     marginTop: 50,
     paddingHorizontal: 20,
+    backgroundColor: 'white',
   },
   listHeading: {
     fontSize: 20,
@@ -130,7 +171,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   resultContainer: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: 'lightblue',
     padding: 10,
     borderRadius: 8,
     marginBottom: 15,
@@ -174,6 +215,32 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     padding: 8,
     width: 200,
+  },
+  outerContainer: {
+    backgroundColor: '', // Fondo blanco
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+    width: '100%',
+  },
+  buttonsContainer: {
+    flexDirection: 'row', // Coloca los botones en la misma línea
+    justifyContent: 'center', // Centra los botones
+  },
+  actionButton: {
+    padding: 10,
+    borderRadius: 5,
+    margin: 5,
+  },
+  modifyButton: {
+    backgroundColor: 'blue', // Color de fondo del botón "Modificar"
+  },
+  deleteButton: {
+    backgroundColor: 'red', // Color de fondo del botón "Eliminar"
+  },
+  actionButtonText: {
+    color: 'white', // Color del texto de los botones
+    textAlign: 'center',
   },
 });
 

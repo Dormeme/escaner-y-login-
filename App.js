@@ -28,6 +28,16 @@ export default function App() {
           }}
         />
         <Stack.Screen
+          name="Registro"
+          component={Registro}
+          options={{
+            title: "Registro de Datos",
+            headerTintColor: "white",
+            headerTitleAlign: "center",
+            headerStyle: { backgroundColor: "#525FE1" },
+          }}
+        />
+        <Stack.Screen
           name="Home"
           component={Home}
           options={{

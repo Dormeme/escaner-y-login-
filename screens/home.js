@@ -1,21 +1,22 @@
 import React from 'react';
-import { Text, View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, View, StyleSheet, TouchableOpacity, ImageBackground } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-export default function Home() {
+export default function Home({ route }) {
   const navigation = useNavigation();
+  const { email } = route.params; // Recibimos el email del usuario
 
   const handleOptionSelection = (option) => {
     if (option === 'escanner') {
-      navigation.navigate('Escanner'); // Navega a la vista 'Escanner'
+      navigation.navigate('Escanner', { email: email }); // Pasamos el email del usuario
     } else if (option === 'listado') {
-      navigation.navigate('Listado'); // Navega a la vista 'Listado'
+      navigation.navigate('Listado', { email: email }); // Pasamos el email del usuario
     }
   };
   
 
   return (
-    <View style={styles.container}>
+    <ImageBackground source={require('../assets/logo_sosya_fondo.png')} style={styles.container}>
       <Text>Listado de tareas</Text>
       <TouchableOpacity
         style={[styles.option, styles.optionBackground]}
@@ -29,7 +30,7 @@ export default function Home() {
       >
         <Text style={styles.optionText}>Listado</Text>
       </TouchableOpacity>
-    </View>
+      </ImageBackground>
   );
 }
 
@@ -38,8 +39,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'cornflowerblue', // Cambiar a tu color de fondo deseado
     marginTop: 50,
+  },
+  imageContainer: {
+    width: '50%', // Ajusta este valor para cambiar el tamaño de la imagen
+    height: '50%', // Ajusta este valor para cambiar el tamaño de la imagen
+  },
+  backgroundImage: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   option: {
     padding: 10,

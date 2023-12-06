@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { Text, View, StyleSheet, Button, TextInput } from 'react-native';
+import { Text, View, StyleSheet, Button, TextInput, Modal } from 'react-native';
 import { BarCodeScanner } from 'expo-barcode-scanner';
 import * as FileSystem from 'expo-file-system';
 import Listado from './Listado';
 
-export default function Escanner() {
+export default function Escanner({ navigation, route }) {
   const [scanned, setScanned] = useState(false);
   const [text, setText] = useState('Aún no escaneado');
   const [itemName, setItemName] = useState('');
@@ -15,11 +15,28 @@ export default function Escanner() {
   const [warehouseName, setWarehouseName] = useState('');
   const [responsible, setResponsible] = useState('');
   const [warehouseCode, setWarehouseCode] = useState('');
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [scanType, setScanType] = useState(null);
+
+  const openScanner = (type) => {
+    setScanned(false);
+    setScanType(type);
+    setModalVisible(true);
+  };
+
+  const closeScanner = () => {
+    setModalVisible(false);
+  };
 
   const askForCameraPermission = async () => {
     const { status } = await BarCodeScanner.requestPermissionsAsync();
     setHasPermission(status === 'granted');
   };
+
+  useEffect(() => {
+    const { email } = route.params || {}; // Recibimos el email del usuario
+    setResponsible(email); // Establecemos el email del usuario como el responsable
+  }, [route]);
 
   useEffect(() => {
     askForCameraPermission();
@@ -29,6 +46,10 @@ export default function Escanner() {
     setScanned(true);
     setText(data);
     setScanDateTime('Fecha y hora: ' + new Date().toLocaleString());
+    if (!responsible) {
+      alert('Por favor, establece el responsable antes de escanear.');
+      return;
+    }
 
     // Verificar si el código ya ha sido escaneado
     const isCodeAlreadyScanned = scannedCodes.some(code => code.data === data);
@@ -127,6 +148,20 @@ export default function Escanner() {
 
   return (
     <View style={styles.container}>
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={isModalVisible}
+        onRequestClose={closeScanner}
+      >
+        <View style={styles.scannerContainer}>
+          <BarCodeScanner
+            onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+            style={{ flex: 1 }}
+          />
+          <Button title={'Cerrar Escáner'} onPress={closeScanner} color='red' />
+        </View>
+      </Modal>
       {showScanner ? (
         <View style={styles.scannerContainer}>
           <TextInput
